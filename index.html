@@ -1,0 +1,248 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
+
+  <title>Escáner QR - Los Olvidados</title>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f2eb;
+      color: #092747;
+      margin: 0;
+      padding: 18px;
+    }
+
+    .contenedor {
+      max-width: 440px;
+      margin: auto;
+      background: white;
+      padding: 22px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 4px 15px #00000015;
+    }
+
+    h1 {
+      font-size: 24px;
+    }
+
+    h2 {
+      font-size: 16px;
+      font-weight: normal;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #092747;
+      color: white;
+      font-size: 17px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+    }
+
+    .secundario {
+      background: #687785;
+    }
+
+    #lector {
+      width: 100%;
+      margin-top: 15px;
+      overflow: hidden;
+    }
+
+    #estado {
+      margin-top: 15px;
+      padding: 12px;
+      font-size: 15px;
+      overflow-wrap: anywhere;
+    }
+
+    #resultado {
+      display: none;
+      margin-top: 15px;
+      padding: 18px;
+      background: #d9f5e4;
+      color: #146c38;
+      border-radius: 10px;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="contenedor">
+
+    <h1>ESCÁNER QR</h1>
+    <h2>Fiesta Bailable – Los Olvidados</h2>
+
+    <p>PRUEBA DE CÁMARA EN VIVO</p>
+
+    <button id="botonIniciar"
+            type="button"
+            onclick="iniciarCamara()">
+      ESCANEAR QR
+    </button>
+
+    <button id="botonDetener"
+            class="secundario"
+            type="button"
+            onclick="detenerCamara()"
+            style="display:none">
+      DETENER CÁMARA
+    </button>
+
+    <div id="lector"></div>
+
+    <div id="estado">
+      Presiona ESCANEAR QR para iniciar.
+    </div>
+
+    <div id="resultado"></div>
+
+  </div>
+
+  <script>
+
+    let lectorQR = null;
+    let camaraActiva = false;
+    let procesando = false;
+
+    function mostrarEstado(mensaje) {
+      document.getElementById('estado').textContent = mensaje;
+    }
+
+    async function iniciarCamara() {
+
+      if (camaraActiva || procesando) {
+        return;
+      }
+
+      if (!window.Html5Qrcode) {
+        mostrarEstado(
+          'ERROR: No se pudo cargar el lector QR.'
+        );
+        return;
+      }
+
+      const boton = document.getElementById('botonIniciar');
+
+      boton.disabled = true;
+
+      mostrarEstado('Solicitando acceso a la cámara...');
+
+      try {
+
+        lectorQR = new Html5Qrcode('lector');
+
+        await lectorQR.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: {
+              width: 220,
+              height: 220
+            }
+          },
+          async function(codigoLeido) {
+
+            if (procesando) {
+              return;
+            }
+
+            procesando = true;
+
+            await detenerCamara();
+
+            const resultado =
+              document.getElementById('resultado');
+
+            resultado.style.display = 'block';
+
+            resultado.textContent =
+              'QR LEÍDO CORRECTAMENTE: ' + codigoLeido;
+
+            mostrarEstado(
+              'Prueba exitosa. No se registró ningún ingreso.'
+            );
+
+            procesando = false;
+          },
+          function() {
+            // Continúa buscando un QR.
+          }
+        );
+
+        camaraActiva = true;
+
+        document.getElementById('botonDetener')
+          .style.display = 'block';
+
+        mostrarEstado(
+          'Cámara activada. Apunta a un código QR.'
+        );
+
+      } catch (error) {
+
+        mostrarEstado(
+          'ERROR DE CÁMARA: ' +
+          (error && error.message
+            ? error.message
+            : String(error))
+        );
+
+        lectorQR = null;
+        camaraActiva = false;
+
+      } finally {
+
+        boton.disabled = false;
+
+      }
+    }
+
+    async function detenerCamara() {
+
+      if (lectorQR) {
+
+        try {
+          if (lectorQR.isScanning) {
+            await lectorQR.stop();
+          }
+        } catch (error) {
+          console.log(error);
+        }
+
+        try {
+          lectorQR.clear();
+        } catch (error) {
+          console.log(error);
+        }
+
+        lectorQR = null;
+      }
+
+      camaraActiva = false;
+
+      document.getElementById('botonDetener')
+        .style.display = 'none';
+    }
+
+  </script>
+
+</body>
+</html>
